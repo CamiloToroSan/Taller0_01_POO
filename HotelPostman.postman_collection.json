@@ -1,0 +1,223 @@
+{
+  "info": {
+    "name": "Hotel API - Solicitudes Avanzadas",
+    "description": "Guía de pruebas y evidencias: suites, consulta polimórfica, resumen de cliente y PATCH selectivo.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    { "key": "baseUrl", "value": "http://localhost:8080" },
+    { "key": "clienteId", "value": "cccc1111-1111-1111-1111-111111111111" }
+  ],
+  "item": [
+    {
+      "name": "1 - Crear Suite Presidencial",
+      "request": {
+        "method": "POST",
+        "header": [{ "key": "Content-Type", "value": "application/json" }],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"numero\": \"P05-501\",\n  \"precioPorNoche\": 350.0,\n  \"capacidadMaxima\": 2,\n  \"jacuzziPrivado\": true,\n  \"incluyeMayordomo\": true\n}",
+          "options": { "raw": { "language": "json" } }
+        },
+        "url": {
+          "raw": "{{baseUrl}}/api/habitaciones/suites",
+          "host": ["{{baseUrl}}"],
+          "path": ["api", "habitaciones", "suites"]
+        },
+        "description": "Esperado: 201 Created con el ID generado y header Location. Estado inicial DISPONIBLE."
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Status 201 Created', function () { pm.response.to.have.status(201); });",
+              "var j = pm.response.json();",
+              "pm.test('Trae id generado', function () { pm.expect(j.id).to.be.a('string'); });",
+              "pm.test('tipo es SUITE', function () { pm.expect(j.tipo).to.eql('SUITE'); });",
+              "pm.test('Header Location presente', function () { pm.response.to.have.header('Location'); });"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "2 - Consulta polimorfica de habitaciones",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/api/habitaciones",
+          "host": ["{{baseUrl}}"],
+          "path": ["api", "habitaciones"]
+        },
+        "description": "Esperado: 200 OK, array donde conviven ESTANDAR y SUITE, cada uno con sus campos propios."
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Status 200 OK', function () { pm.response.to.have.status(200); });",
+              "var arr = pm.response.json();",
+              "pm.test('Es un array', function () { pm.expect(arr).to.be.an('array'); });",
+              "pm.test('Conviven ESTANDAR y SUITE', function () {",
+              "  var tipos = arr.map(function (h) { return h.tipo; });",
+              "  pm.expect(tipos).to.include('ESTANDAR');",
+              "  pm.expect(tipos).to.include('SUITE');",
+              "});",
+              "pm.test('ESTANDAR trae camasIndividuales', function () {",
+              "  arr.filter(function (h) { return h.tipo === 'ESTANDAR'; })",
+              "     .forEach(function (h) { pm.expect(h).to.have.property('camasIndividuales'); });",
+              "});",
+              "pm.test('SUITE trae mayordomo y jacuzzi', function () {",
+              "  arr.filter(function (h) { return h.tipo === 'SUITE'; })",
+              "     .forEach(function (h) {",
+              "       pm.expect(h).to.have.property('incluyeMayordomo');",
+              "       pm.expect(h).to.have.property('jacuzziPrivado');",
+              "     });",
+              "});"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "3 - Resumen ejecutivo del cliente",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/api/clientes/{{clienteId}}/resumen",
+          "host": ["{{baseUrl}}"],
+          "path": ["api", "clientes", "{{clienteId}}", "resumen"]
+        },
+        "description": "Esperado: 200 OK, totalReservasRealizadas = 3, montoTotalGastado = 3200.0, lista limpia sin campo cliente ni $ref."
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Status 200 OK', function () { pm.response.to.have.status(200); });",
+              "var j = pm.response.json();",
+              "pm.test('totalReservasRealizadas coincide con la lista', function () {",
+              "  pm.expect(j.totalReservasRealizadas).to.eql(j.reservasRecientes.length);",
+              "});",
+              "pm.test('montoTotalGastado es la suma de costoTotal', function () {",
+              "  var suma = j.reservasRecientes.reduce(function (a, r) { return a + r.costoTotal; }, 0);",
+              "  pm.expect(j.montoTotalGastado).to.eql(suma);",
+              "});",
+              "pm.test('Reservas sin referencia al cliente', function () {",
+              "  j.reservasRecientes.forEach(function (r) {",
+              "    pm.expect(r).to.not.have.property('cliente');",
+              "    pm.expect(r).to.not.have.property('$ref');",
+              "  });",
+              "});"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "3b - Resumen cliente sin reservas",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/api/clientes/dddd2222-2222-2222-2222-222222222222/resumen",
+          "host": ["{{baseUrl}}"],
+          "path": ["api", "clientes", "dddd2222-2222-2222-2222-222222222222", "resumen"]
+        },
+        "description": "Esperado: 200 OK, 0 reservas, monto 0.0 y lista vacía."
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Status 200 OK', function () { pm.response.to.have.status(200); });",
+              "var j = pm.response.json();",
+              "pm.test('Cero reservas y lista vacia', function () {",
+              "  pm.expect(j.totalReservasRealizadas).to.eql(0);",
+              "  pm.expect(j.montoTotalGastado).to.eql(0);",
+              "  pm.expect(j.reservasRecientes).to.eql([]);",
+              "});"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "4 - PATCH actualizacion selectiva (solo nombre)",
+      "request": {
+        "method": "PATCH",
+        "header": [{ "key": "Content-Type", "value": "application/json" }],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"nombre\": \"Nuevo Nombre Modificado\"\n}",
+          "options": { "raw": { "language": "json" } }
+        },
+        "url": {
+          "raw": "{{baseUrl}}/api/clientes/{{clienteId}}",
+          "host": ["{{baseUrl}}"],
+          "path": ["api", "clientes", "{{clienteId}}"]
+        },
+        "description": "Esperado: 200 OK. Cambia solo el nombre. Email, activo y penalizaciones quedan inalterados. Confirmar con SELECT en PostgreSQL antes y después."
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Status 200 OK', function () { pm.response.to.have.status(200); });",
+              "var j = pm.response.json();",
+              "pm.test('Nombre actualizado', function () { pm.expect(j.nombre).to.eql('Nuevo Nombre Modificado'); });",
+              "pm.test('Email intacto', function () { pm.expect(j.email).to.eql('valentina@empresa.com'); });",
+              "pm.test('Activo intacto', function () { pm.expect(j.activo).to.eql(true); });",
+              "pm.test('Penalizaciones intactas', function () { pm.expect(j.penalizaciones).to.eql(2); });"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "4b - PATCH intento Mass Assignment",
+      "request": {
+        "method": "PATCH",
+        "header": [{ "key": "Content-Type", "value": "application/json" }],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"nombre\": \"Hacker\",\n  \"penalizaciones\": 0,\n  \"activo\": false,\n  \"id\": \"00000000-0000-0000-0000-000000000000\"\n}",
+          "options": { "raw": { "language": "json" } }
+        },
+        "url": {
+          "raw": "{{baseUrl}}/api/clientes/{{clienteId}}",
+          "host": ["{{baseUrl}}"],
+          "path": ["api", "clientes", "{{clienteId}}"]
+        },
+        "description": "Esperado: 200 OK. Solo cambia el nombre. penalizaciones, activo e id no se alteran."
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Status 200 OK', function () { pm.response.to.have.status(200); });",
+              "var j = pm.response.json();",
+              "pm.test('penalizaciones sigue en 2', function () { pm.expect(j.penalizaciones).to.eql(2); });",
+              "pm.test('activo sigue true', function () { pm.expect(j.activo).to.eql(true); });",
+              "pm.test('id no cambio', function () { pm.expect(j.id).to.eql(pm.collectionVariables.get('clienteId')); });"
+            ]
+          }
+        }
+      ]
+    }
+  ]
+}

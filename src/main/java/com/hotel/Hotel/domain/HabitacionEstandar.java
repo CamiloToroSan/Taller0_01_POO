@@ -14,12 +14,11 @@ public class HabitacionEstandar extends Habitacion {
     protected HabitacionEstandar() {
     }
 
-    public HabitacionEstandar(String numero, int capacidadMaxima, double precioPorNoche, int camasIndividuales) {
+    public HabitacionEstandar(String numero, int capacidadMaxima,
+                              double precioPorNoche, int camasIndividuales) {
         super(numero, capacidadMaxima, precioPorNoche);
         this.camasIndividuales = camasIndividuales;
     }
 
-    public int getCamasIndividuales() {
-        return camasIndividuales;
-    }
+    public int getCamasIndividuales() { return camasIndividuales; }
 }

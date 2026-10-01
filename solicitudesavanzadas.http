@@ -1,0 +1,97 @@
+### ============================================================
+### SOLICITUDES AVANZADAS - API HOTEL
+### ============================================================
+@baseUrl = http://localhost:8080
+@clienteId = cccc1111-1111-1111-1111-111111111111
+
+### ------------------------------------------------------------
+### PRUEBA 1: Creación de Suite Presidencial
+### Esperado: 201 Created, header Location y el ID generado en el body
+### Verificación SQL:
+###   SELECT h.numero, h.estado, s.incluye_mayordomo, s.jacuzzi_privado
+###   FROM habitaciones h JOIN suites_presidenciales s ON h.id = s.id
+###   WHERE h.numero = 'P05-501';
+### ------------------------------------------------------------
+POST {{baseUrl}}/api/habitaciones/suites
+Content-Type: application/json
+
+{
+  "numero": "P05-501",
+  "precioPorNoche": 350.0,
+  "capacidadMaxima": 2,
+  "jacuzziPrivado": true,
+  "incluyeMayordomo": true
+}
+
+### ------------------------------------------------------------
+### PRUEBA 2: Consulta polimórfica
+### Esperado: 200 OK, array donde conviven "tipo": "ESTANDAR" y "tipo": "SUITE"
+### Cada ESTANDAR trae camasIndividuales; cada SUITE trae
+### incluyeMayordomo y jacuzziPrivado. Sin errores de casteo.
+### ------------------------------------------------------------
+GET {{baseUrl}}/api/habitaciones
+
+### ------------------------------------------------------------
+### PRUEBA 3: Resumen ejecutivo del cliente
+### Esperado: 200 OK, totalReservasRealizadas = 3, montoTotalGastado = 3200.0,
+### reservasRecientes limpia (sin campo "cliente" ni "$ref")
+### Verificación SQL:
+###   SELECT SUM(costo_total), COUNT(*) FROM reservas
+###   WHERE cliente_id = 'cccc1111-1111-1111-1111-111111111111';
+### ------------------------------------------------------------
+GET {{baseUrl}}/api/clientes/{{clienteId}}/resumen
+
+### ------------------------------------------------------------
+### PRUEBA 3b: Resumen de otro cliente (Laura Gomez: 3 reservas, 1360.0)
+### ------------------------------------------------------------
+GET {{baseUrl}}/api/clientes/aaaa0002-0000-0000-0000-000000000002/resumen
+
+### ------------------------------------------------------------
+### PRUEBA 3c: Resumen de cliente sin reservas (0 reservas, 0.0, lista vacía)
+### ------------------------------------------------------------
+GET {{baseUrl}}/api/clientes/dddd2222-2222-2222-2222-222222222222/resumen
+
+### ------------------------------------------------------------
+### PRUEBA 4: Actualización selectiva (PATCH)
+### Esperado: 200 OK; solo cambia nombre.
+### Verificación SQL (antes y después):
+###   SELECT id, nombre, email, activo, penalizaciones FROM clientes
+###   WHERE id = 'cccc1111-1111-1111-1111-111111111111';
+### email, activo y penalizaciones (2) deben permanecer inalterados.
+### ------------------------------------------------------------
+PATCH {{baseUrl}}/api/clientes/{{clienteId}}
+Content-Type: application/json
+
+{
+  "nombre": "Nuevo Nombre Modificado"
+}
+
+### ------------------------------------------------------------
+### PRUEBA 4b: Confirmar por GET que nada más cambió
+### ------------------------------------------------------------
+GET {{baseUrl}}/api/clientes/{{clienteId}}
+
+### ------------------------------------------------------------
+### PRUEBA 4c (extra): Intento de Mass Assignment
+### Esperado: 200 OK; nombre cambia, pero penalizaciones, activo e id NO
+### ------------------------------------------------------------
+PATCH {{baseUrl}}/api/clientes/{{clienteId}}
+Content-Type: application/json
+
+{
+  "nombre": "Hacker",
+  "penalizaciones": 0,
+  "activo": false,
+  "id": "00000000-0000-0000-0000-000000000000"
+}
+
+### ------------------------------------------------------------
+### PRUEBA 4d (extra): PATCH solo con email
+### Esperado: 200 OK; cambia email, el nombre queda como estaba
+### ------------------------------------------------------------
+PATCH {{baseUrl}}/api/clientes/{{clienteId}}
+Content-Type: application/json
+
+{
+  "email": "valentina.nueva@empresa.com"
+}
